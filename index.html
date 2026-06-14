@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>繰り返しインターバルタイマー</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app" aria-labelledby="app-title">
+      <header class="hero">
+        <p class="eyebrow">Drift-safe interval timer</p>
+        <h1 id="app-title">繰り返しインターバルタイマー</h1>
+        <p class="description">指定した周期を停止するまで繰り返します。絶対時刻から残り時間を再計算し、処理遅延によるずれの累積を抑えます。</p>
+      </header>
+
+      <section class="timer-card" aria-label="タイマー状態">
+        <div class="status-row">
+          <span id="status" class="status-badge">停止中</span>
+          <span id="cycle" class="cycle">0周目</span>
+        </div>
+        <div id="time-display" class="time-display" aria-label="残り時間">00:02:00</div>
+        <div id="countdown-display" class="countdown-display" aria-hidden="true"></div>
+        <p id="error" class="error" role="alert"></p>
+        <p id="live-message" class="sr-only" aria-live="polite"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="settings-title">
+        <h2 id="settings-title">時間設定</h2>
+        <div class="time-selectors">
+          <label>時
+            <select id="hours"></select>
+          </label>
+          <label>分
+            <select id="minutes"></select>
+          </label>
+          <label>秒
+            <select id="seconds"></select>
+          </label>
+        </div>
+      </section>
+
+      <section class="controls" aria-label="操作ボタン">
+        <button id="start" class="primary">スタート</button>
+        <button id="pause" disabled>一時停止</button>
+        <button id="stop" class="danger">停止</button>
+        <button id="shift-minus">1秒－シフト</button>
+        <button id="shift-plus">1秒＋シフト</button>
+      </section>
+
+      <section class="panel" aria-labelledby="sound-title">
+        <h2 id="sound-title">音量</h2>
+        <div class="volume-row">
+          <label for="volume">音量 <span id="volume-value">50%</span></label>
+          <input id="volume" type="range" min="0" max="100" value="50" />
+          <button id="mute" type="button">ミュート</button>
+        </div>
+      </section>
+
+      <section class="details" aria-label="詳細情報">
+        <p id="configured-period">設定周期：2分00秒</p>
+        <p id="shift">シフト：+0秒</p>
+        <p id="next-end">次回終了：--:--:--</p>
+      </section>
+
+      <button id="reset" class="reset" type="button">リセット</button>
+    </main>
+    <script src="./app.js" defer></script>
+  </body>
+</html>
