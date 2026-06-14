@@ -2,6 +2,8 @@
 
 繰り返しインターバルタイマーは、指定した周期を停止するまで繰り返す静的Webアプリです。
 
+公開ページ: https://pun2beam.github.io/Interval-Timer/
+
 ## 使い方
 
 1. `index.html` をブラウザで開きます。
