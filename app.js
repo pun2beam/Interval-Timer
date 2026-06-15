@@ -1,7 +1,7 @@
-const DEFAULTS = { hours: 0, minutes: 2, seconds: 0, volume: 50, muted: false };
+const DEFAULTS = { hours: 0, minutes: 2, seconds: 0, centiseconds: 0, volume: 50, muted: false };
 const STORAGE_KEY = 'intervalTimerSettings';
 const els = {
-  hours: document.querySelector('#hours'), minutes: document.querySelector('#minutes'), seconds: document.querySelector('#seconds'),
+  hours: document.querySelector('#hours'), minutes: document.querySelector('#minutes'), seconds: document.querySelector('#seconds'), centiseconds: document.querySelector('#centiseconds'),
   status: document.querySelector('#status'), cycle: document.querySelector('#cycle'), time: document.querySelector('#time-display'), countdown: document.querySelector('#countdown-display'),
   error: document.querySelector('#error'), live: document.querySelector('#live-message'), start: document.querySelector('#start'), pause: document.querySelector('#pause'), stop: document.querySelector('#stop'),
   shiftMinus: document.querySelector('#shift-minus'), shiftPlus: document.querySelector('#shift-plus'), reset: document.querySelector('#reset'),
@@ -37,7 +37,7 @@ function loadSettings() {
 
 function saveSettings() {
   const data = {
-    hours: Number(els.hours.value), minutes: Number(els.minutes.value), seconds: Number(els.seconds.value),
+    hours: Number(els.hours.value), minutes: Number(els.minutes.value), seconds: Number(els.seconds.value), centiseconds: Number(els.centiseconds.value),
     volume: Number(els.volume.value), muted: settings.muted
   };
   settings = data;
@@ -45,23 +45,26 @@ function saveSettings() {
 }
 
 function selectedPeriodMs() {
-  return ((Number(els.hours.value) * 3600) + (Number(els.minutes.value) * 60) + Number(els.seconds.value)) * 1000;
+  return ((Number(els.hours.value) * 3600) + (Number(els.minutes.value) * 60) + Number(els.seconds.value)) * 1000 + (Number(els.centiseconds.value) * 10);
 }
 
-function formatHms(totalSeconds) {
-  const s = Math.max(0, totalSeconds);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  return [h, m, sec].map((n) => String(n).padStart(2, '0')).join(':');
+function formatTime(ms) {
+  const totalCentiseconds = Math.max(0, Math.ceil(ms / 10));
+  const h = Math.floor(totalCentiseconds / 360000);
+  const m = Math.floor((totalCentiseconds % 360000) / 6000);
+  const s = Math.floor((totalCentiseconds % 6000) / 100);
+  const cs = totalCentiseconds % 100;
+  return `${[h, m, s].map((n) => String(n).padStart(2, '0')).join(':')}.${String(cs).padStart(2, '0')}`;
 }
 
 function formatPeriod(ms) {
-  const total = Math.floor(ms / 1000);
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  return h > 0 ? `${h}時間${String(m).padStart(2, '0')}分${String(s).padStart(2, '0')}秒` : `${m}分${String(s).padStart(2, '0')}秒`;
+  const totalCentiseconds = Math.floor(ms / 10);
+  const h = Math.floor(totalCentiseconds / 360000);
+  const m = Math.floor((totalCentiseconds % 360000) / 6000);
+  const s = Math.floor((totalCentiseconds % 6000) / 100);
+  const cs = totalCentiseconds % 100;
+  const secondLabel = `${String(s).padStart(2, '0')}.${String(cs).padStart(2, '0')}秒`;
+  return h > 0 ? `${h}時間${String(m).padStart(2, '0')}分${secondLabel}` : `${m}分${secondLabel}`;
 }
 
 function currentCycleAt(now) {
@@ -78,7 +81,7 @@ function setControls() {
   els.start.disabled = state === 'running';
   els.pause.disabled = state === 'stopped';
   els.pause.textContent = state === 'paused' ? '再開' : '一時停止';
-  [els.hours, els.minutes, els.seconds].forEach((el) => { el.disabled = running; });
+  [els.hours, els.minutes, els.seconds, els.centiseconds].forEach((el) => { el.disabled = running; });
 }
 
 function setStatus(label) {
@@ -124,7 +127,7 @@ function updateDetails(end = null) {
 
 function render(now = Date.now()) {
   const displayNow = state === 'paused' ? pausedAt : now;
-  let remainingSeconds = Math.ceil(periodMs / 1000);
+  let remainingMs = periodMs;
   let end = null;
   if (state !== 'stopped') {
     const actualCycle = currentCycleAt(displayNow);
@@ -134,17 +137,18 @@ function render(now = Date.now()) {
       playedCountdown.clear();
     }
     end = endTimeFor(cycleNumber);
-    remainingSeconds = Math.ceil((end - displayNow) / 1000);
-    if (remainingSeconds <= 0 && state === 'running') {
+    remainingMs = end - displayNow;
+    if (remainingMs <= 0 && state === 'running') {
       playEnd();
       lastCompletedCycle = cycleNumber;
       cycleNumber = currentCycleAt(Date.now());
       if (cycleNumber <= lastCompletedCycle) cycleNumber = lastCompletedCycle + 1;
       playedCountdown.clear();
       end = endTimeFor(cycleNumber);
-      remainingSeconds = Math.ceil((end - Date.now()) / 1000);
+      remainingMs = end - Date.now();
     }
     els.cycle.textContent = `${cycleNumber}周目`;
+    const remainingSeconds = Math.ceil(remainingMs / 1000);
     if (state === 'running' && remainingSeconds > 0 && remainingSeconds <= Math.min(10, Math.ceil(periodMs / 1000)) && !playedCountdown.has(remainingSeconds)) {
       playedCountdown.add(remainingSeconds);
       playCountdown(remainingSeconds);
@@ -152,10 +156,11 @@ function render(now = Date.now()) {
   } else {
     els.cycle.textContent = '0周目';
   }
-  els.time.textContent = formatHms(remainingSeconds);
-  const isCountdown = state === 'running' && remainingSeconds > 0 && remainingSeconds <= 10;
+  els.time.textContent = formatTime(remainingMs);
+  const displaySeconds = Math.ceil(remainingMs / 1000);
+  const isCountdown = state === 'running' && displaySeconds > 0 && displaySeconds <= 10;
   els.time.classList.toggle('is-countdown', isCountdown);
-  els.countdown.textContent = isCountdown ? String(remainingSeconds) : '';
+  els.countdown.textContent = isCountdown ? String(displaySeconds) : '';
   setStatus(state === 'paused' ? '一時停止中' : isCountdown ? 'カウントダウン中' : state === 'running' ? '実行中' : '停止中');
   updateDetails(end);
 }
@@ -167,7 +172,7 @@ function loop() {
 
 function start() {
   periodMs = selectedPeriodMs();
-  if (periodMs < 1000) { els.error.textContent = '1秒以上の時間を設定してください。'; return; }
+  if (periodMs < 10) { els.error.textContent = '0.01秒以上の時間を設定してください。'; return; }
   els.error.textContent = '';
   ensureAudio();
   state = 'running'; baseStart = Date.now(); cycleNumber = 1; shiftMs = 0; playedCountdown.clear(); lastCompletedCycle = 0;
@@ -195,7 +200,7 @@ function shift(delta) {
 function reset() {
   if (state !== 'stopped' && !confirm('実行中のタイマーをリセットしますか？')) return;
   stop();
-  els.hours.value = String(DEFAULTS.hours); els.minutes.value = String(DEFAULTS.minutes); els.seconds.value = String(DEFAULTS.seconds);
+  els.hours.value = String(DEFAULTS.hours); els.minutes.value = String(DEFAULTS.minutes); els.seconds.value = String(DEFAULTS.seconds); els.centiseconds.value = String(DEFAULTS.centiseconds);
   els.volume.value = String(DEFAULTS.volume); settings.muted = DEFAULTS.muted; updateVolume(); saveSettings(); render();
 }
 
@@ -209,9 +214,9 @@ function ignoreShortcut(event) {
   return ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(event.target.tagName);
 }
 
-populateSelect(els.hours, 23, settings.hours); populateSelect(els.minutes, 59, settings.minutes); populateSelect(els.seconds, 59, settings.seconds);
+populateSelect(els.hours, 23, settings.hours); populateSelect(els.minutes, 59, settings.minutes); populateSelect(els.seconds, 59, settings.seconds); populateSelect(els.centiseconds, 99, settings.centiseconds);
 els.volume.value = String(settings.volume); updateVolume(); updateDetails(); render();
-[els.hours, els.minutes, els.seconds, els.volume].forEach((el) => el.addEventListener('change', () => { saveSettings(); updateVolume(); render(); }));
+[els.hours, els.minutes, els.seconds, els.centiseconds, els.volume].forEach((el) => el.addEventListener('change', () => { saveSettings(); updateVolume(); render(); }));
 els.start.addEventListener('click', start); els.pause.addEventListener('click', togglePause); els.stop.addEventListener('click', stop);
 els.shiftPlus.addEventListener('click', () => shift(1000)); els.shiftMinus.addEventListener('click', () => shift(-1000)); els.reset.addEventListener('click', reset);
 els.mute.addEventListener('click', () => { settings.muted = !settings.muted; updateVolume(); saveSettings(); });

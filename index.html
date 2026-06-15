@@ -19,7 +19,7 @@
           <span id="status" class="status-badge">停止中</span>
           <span id="cycle" class="cycle">0周目</span>
         </div>
-        <div id="time-display" class="time-display" aria-label="残り時間">00:02:00</div>
+        <div id="time-display" class="time-display" aria-label="残り時間">00:02:00.00</div>
         <div id="countdown-display" class="countdown-display" aria-hidden="true"></div>
         <p id="error" class="error" role="alert"></p>
         <p id="live-message" class="sr-only" aria-live="polite"></p>
@@ -36,6 +36,9 @@
           </label>
           <label>秒
             <select id="seconds"></select>
+          </label>
+          <label>1/100秒
+            <select id="centiseconds"></select>
           </label>
         </div>
       </section>
@@ -58,7 +61,7 @@
       </section>
 
       <section class="details" aria-label="詳細情報">
-        <p id="configured-period">設定周期：2分00秒</p>
+        <p id="configured-period">設定周期：2分00.00秒</p>
         <p id="shift">シフト：+0秒</p>
         <p id="next-end">次回終了：--:--:--</p>
       </section>
